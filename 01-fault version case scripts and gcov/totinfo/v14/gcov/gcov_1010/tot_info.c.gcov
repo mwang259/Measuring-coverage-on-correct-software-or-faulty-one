@@ -1,0 +1,527 @@
+        -:    0:Source:tot_info.c
+        -:    0:Graph:tot_info.gcno
+        -:    0:Data:tot_info.gcda
+        -:    0:Runs:1
+        -:    0:Programs:1
+        -:    1:/*
+        -:    2:	tot_info -- combine information statistics for multiple tables
+        -:    3:
+        -:    4:	last edit:	89/02/06	D A Gwyn
+        -:    5:
+        -:    6:	SCCS ID:	@(#)tot_info.c	1.1 (edited for publication)
+        -:    7:*/
+        -:    8:
+        -:    9:#include	<ctype.h>
+        -:   10:#include	<stdio.h>
+        -:   11:
+        -:   12:#include	"std.h"
+        -:   13:
+        -:   14:#include	"chisq.h"
+        -:   15:#include	"gamma.h"		/* for QChiSq() */
+        -:   16:
+        -:   17:
+        -:   18:#define	MAXLINE	256
+        -:   19:
+        -:   20:
+        -:   21:#ifndef MAXTBL
+        -:   22:#define	MAXTBL	1000
+        -:   23:#endif
+        -:   24:
+        -:   25:static char	line[MAXLINE];		/* row/column header input line */
+        -:   26:static long	f[MAXTBL];		/* frequency tallies */
+        -:   27:static int	r;			/* # of rows */
+        -:   28:static int	c;			/* # of columns */
+        -:   29:
+        -:   30:#define	x(i,j)	f[(i)*c+(j)]		/* convenient way to access freqs */
+        -:   31:
+        -:   32:#define	COMMENT	'#'			/* comment character */
+        -:   33:
+        -:   34:
+        -:   35:#ifndef NULL
+        -:   36:#define NULL 0
+        -:   37:#endif
+        -:   38:
+        -:   39:/*ARGSUSED*/
+        -:   40:int
+function main called 1 returned 100% blocks executed 76%
+        1:   41:main( argc, argv )
+        -:   42:	int		argc;
+        -:   43:	char		*argv[];
+        -:   44:	{
+        -:   45:	char	*p;		/* input line scan location */
+        -:   46:	int	i;		/* row index */
+        -:   47:	int	j;		/* column index */
+        -:   48:	double		info;		/* computed information measure */
+        -:   49:	int		infodf;		/* degrees of freedom for information */
+        1:   50:	double		totinfo = 0.0;	/* accumulated information */
+        -:   51:	int		totdf;	/* accumulated degrees of freedom */
+        -:   52: 
+        1:   53:        totdf = 0;
+        -:   54:
+       30:   55:	while ( fgets( line, MAXLINE, stdin ) != NULL )	/* start new table */
+call    0 returned 29
+branch  1 taken 29
+branch  2 taken 0 (fallthrough)
+        -:   56:		{
+       29:   57:		for ( p = line; *p != '\0' && isspace( (int)*p ); ++p )
+branch  0 taken 36 (fallthrough)
+branch  1 taken 17
+branch  2 taken 24
+branch  3 taken 12 (fallthrough)
+        -:   58:			;
+        -:   59:
+       29:   60:		if ( *p == '\0' )
+branch  0 taken 17 (fallthrough)
+branch  1 taken 12
+       17:   61:			continue;	/* skip blank line */
+        -:   62:
+       12:   63:		if ( *p == COMMENT )
+branch  0 taken 1 (fallthrough)
+branch  1 taken 11
+        -:   64:			{		/* copy comment through */
+        1:   65:			(void)fputs( line, stdout );
+call    0 returned 1
+        1:   66:			continue;
+        -:   67:			}
+        -:   68:
+       11:   69:		if ( sscanf( p, "%d %d\n", &r, &c ) != 2 )
+branch  0 taken 1 (fallthrough)
+branch  1 taken 10
+        -:   70:			{
+        1:   71:			(void)fputs( "* invalid row/column line *\n", stdout );
+call    0 returned 1
+        1:   72:			return EXIT_FAILURE;
+        -:   73:			}
+        -:   74:
+       10:   75:		if ( r * c >= MAXTBL )
+branch  0 taken 0 (fallthrough)
+branch  1 taken 10
+        -:   76:			{
+    #####:   77:			(void)fputs( "* table too large *\n", stdout );
+call    0 never executed
+    #####:   78:			return EXIT_FAILURE;
+        -:   79:			}
+        -:   80:
+        -:   81:		/* input tallies */
+        -:   82:
+       43:   83:		for ( i = 0; i < r; ++i )
+branch  0 taken 33
+branch  1 taken 10 (fallthrough)
+      153:   84:			for ( j = 0; j < c; ++j )
+branch  0 taken 120
+branch  1 taken 33 (fallthrough)
+      120:   85:				if ( scanf( " %ld", &x(i,j) ) != 1 )
+call    0 returned 120
+branch  1 taken 0 (fallthrough)
+branch  2 taken 120
+        -:   86:					{
+    #####:   87:					(void)fputs( "* EOF in table *\n",
+call    0 never executed
+        -:   88:						     stdout
+        -:   89:						   );
+    #####:   90:					return EXIT_FAILURE;
+        -:   91:					}
+        -:   92:
+        -:   93:		/* compute statistic */
+        -:   94:
+       10:   95:		info = InfoTbl( r, c, f, &infodf );
+call    0 returned 10
+        -:   96:
+        -:   97:		/* print results */
+        -:   98:
+       10:   99:		if ( info >= 0.0 )
+branch  0 taken 8 (fallthrough)
+branch  1 taken 2
+        -:  100:			{
+        8:  101:			(void)printf( "2info = %5.2f\tdf = %2d\tq = %7.4f\n",
+call    0 returned 8
+call    1 returned 8
+        -:  102:				      info, infodf,
+        -:  103:				      QChiSq( info, infodf )
+        -:  104:				    );
+        8:  105:			totinfo += info;
+        8:  106:			totdf += infodf;
+        -:  107:			}
+        -:  108:		else
+        4:  109:			(void)fputs( info < -3.5 ? "out of memory\n"
+branch  0 taken 0 (fallthrough)
+branch  1 taken 2
+call    2 returned 2
+        2:  110:				   : info < -2.5 ? "table too small\n"
+branch  0 taken 0 (fallthrough)
+branch  1 taken 2
+branch  2 taken 1 (fallthrough)
+branch  3 taken 1
+        -:  111:				   : info < -1.5 ? "negative freq\n"
+        -:  112:				   : "table all zeros\n",
+        -:  113:				     stdout
+        -:  114:				   );
+        -:  115:		}
+        -:  116:
+    #####:  117:	if ( totdf <= 0 )
+branch  0 never executed
+branch  1 never executed
+        -:  118:		{
+    #####:  119:		(void)fputs( "\n*** no information accumulated ***\n", stdout );
+call    0 never executed
+    #####:  120:		return EXIT_FAILURE;
+        -:  121:		}
+        -:  122:
+    #####:  123:	(void)printf( "\ntotal 2info = %5.2f\tdf = %2d\tq = %7.4f\n",
+call    0 never executed
+call    1 never executed
+        -:  124:		      totinfo, totdf,
+        -:  125:		      QChiSq( totinfo, totdf )
+        -:  126:		    );
+    #####:  127:	return EXIT_SUCCESS;
+        -:  128:	}
+        -:  129:
+        -:  130:
+        -:  131:/*  -*- Last-Edit:  Tue Dec 15 14:48:14 1992 by Tarak S. Goradia; -*- */
+        -:  132:
+        -:  133:/*
+        -:  134:	Gamma -- gamma and related functions
+        -:  135:
+        -:  136:	last edit:	88/09/09	D A Gwyn
+        -:  137:
+        -:  138:	SCCS ID:	@(#)gamma.c	1.1 (edited for publication)
+        -:  139:
+        -:  140:Acknowledgement:
+        -:  141:	Code based on that found in "Numerical Methods in C".
+        -:  142:*/
+        -:  143:
+        -:  144:#include	<math.h>
+        -:  145:#include        <stdio.h>
+        -:  146:
+        -:  147:#include	"std.h"
+        -:  148:#define sin
+        -:  149:#define log
+        -:  150:#define exp
+        -:  151:double
+function LGamma called 8 returned 100% blocks executed 75%
+        8:  152:LGamma( x )
+        -:  153:	double			x;
+        -:  154:	{
+        -:  155:	static const double	cof[6] =
+        -:  156:		{
+        -:  157:		76.18009173,	-86.50532033,	24.01409822,
+        -:  158:		-1.231739516,	0.120858003e-2,	-0.536382e-5
+        -:  159:		};
+        -:  160:	double			tmp, ser;
+        -:  161:	int		j;
+        -:  162:
+        -:  163:
+        8:  164:	if ( --x < 0.0 )	/* use reflection formula for accuracy */
+branch  0 taken 0 (fallthrough)
+branch  1 taken 8
+        -:  165:		{
+    #####:  166:		double	pix = PI * x;
+        -:  167:
+    #####:  168:		return log( pix / sin( pix ) ) - LGamma( 1.0 - x );
+call    0 never executed
+        -:  169:		}
+        -:  170:
+        8:  171:	tmp = x + 5.5;
+        8:  172:	tmp -= (x + 0.5) * log( tmp );
+        -:  173:
+        8:  174:	ser = 1.0;
+        -:  175:
+       56:  176:	for ( j = 0; j < 6; ++j )
+branch  0 taken 48
+branch  1 taken 8 (fallthrough)
+       48:  177:		ser += cof[j] / ++x;
+        -:  178:
+        8:  179:	return -tmp + log( 2.50662827465 * ser );
+        -:  180:	}
+        -:  181:
+        -:  182:#define	ITMAX	100
+        -:  183:#define	EPS	3.0e-7
+        -:  184:
+        -:  185:static double
+function gser called 0 returned 0% blocks executed 0%
+    #####:  186:gser( a, x )
+        -:  187:	double		a, x;
+        -:  188:	{
+        -:  189:	double		ap, del, sum;
+        -:  190:	int	n;
+        -:  191:
+        -:  192:
+    #####:  193:	if ( x <= 0.0 )
+branch  0 never executed
+branch  1 never executed
+    #####:  194:		return 0.0;
+        -:  195:
+    #####:  196:	del = sum = 1.0 / (ap = a);
+        -:  197:
+    #####:  198:	for ( n = 1; n <= ITMAX; ++n )
+branch  0 never executed
+branch  1 never executed
+        -:  199:		{
+    #####:  200:		sum += del *= x / ++ap;
+        -:  201:
+    #####:  202:		if ( Abs( del ) < Abs( sum ) * EPS )
+branch  0 never executed
+branch  1 never executed
+branch  2 never executed
+branch  3 never executed
+branch  4 never executed
+branch  5 never executed
+    #####:  203:			return sum * exp( -x + a * log( x ) - LGamma( a ) );
+call    0 never executed
+        -:  204:		}
+        -:  205:
+        -:  206:	/*NOTREACHED*/
+    #####:  207:	}
+        -:  208:
+        -:  209:static double
+function gcf called 8 returned 100% blocks executed 88%
+        8:  210:gcf( a, x )
+        -:  211:	double		a, x;
+        -:  212:	{
+        -:  213:	int	n;
+        8:  214:	double		gold = 0.0, fac = 1.0, b1 = 1.0,
+        8:  215:			b0 = 0.0, a0 = 1.0, a1 = x;
+        -:  216:
+       16:  217:	for ( n = 1; n <= ITMAX; ++n )
+branch  0 taken 16
+branch  1 taken 0 (fallthrough)
+        -:  218:		{
+        -:  219:		double	anf;
+       16:  220:		double	an = (double)n;
+       16:  221:		double	ana = an - a;
+        -:  222:
+       16:  223:		a0 = (a1 + a0 * ana) * fac;
+       16:  224:		b0 = (b1 + b0 * ana) * fac;
+       16:  225:		anf = an * fac;
+       16:  226:		b1 = x * b0 + anf * b1;
+       16:  227:		a1 = x * a0 + anf * a1;
+        -:  228:
+       16:  229:		if ( a1 != 0.0 )
+branch  0 taken 16 (fallthrough)
+branch  1 taken 0
+        -:  230:			{		/* renormalize */
+       16:  231:			double	g = b1 * (fac = 1.0 / a1);
+        -:  232:
+       16:  233:			gold = g - gold;
+        -:  234:
+       16:  235:			if ( Abs( gold ) < EPS * Abs( g ) )
+branch  0 taken 1 (fallthrough)
+branch  1 taken 15
+branch  2 taken 0 (fallthrough)
+branch  3 taken 16
+branch  4 taken 8 (fallthrough)
+branch  5 taken 8
+       16:  236:				return exp( -x + a * log( x ) - LGamma( a ) ) * g;
+call    0 returned 8
+        -:  237:
+        8:  238:			gold = g;
+        -:  239:			}
+        -:  240:		}
+        -:  241:
+        -:  242:	/*NOTREACHED*/
+    #####:  243:	}
+        -:  244:
+        -:  245:double
+function QGamma called 8 returned 100% blocks executed 67%
+        8:  246:QGamma( a, x )
+        -:  247:	double	a, x;
+        -:  248:	{
+        -:  249:
+        8:  250:	return x < a + 1.0 ? 1.0 - gser( a, x ) : gcf( a, x );
+branch  0 taken 0 (fallthrough)
+branch  1 taken 8
+call    2 never executed
+call    3 returned 8
+        -:  251:	}
+        -:  252:
+        -:  253:double
+function QChiSq called 8 returned 100% blocks executed 100%
+        8:  254:QChiSq( chisq, df )
+        -:  255:	double	chisq;
+        -:  256:	int	df;
+        -:  257:	{
+        8:  258:	return QGamma( (double)df / 2.0, chisq / 2.0 );
+call    0 returned 8
+        -:  259:	}
+        -:  260:
+        -:  261:
+        -:  262:/*
+        -:  263:	InfoTbl -- Kullback's information measure for a 2-way contingency table
+        -:  264:
+        -:  265:	last edit:	88/09/19	D A Gwyn
+        -:  266:
+        -:  267:	SCCS ID:	@(#)info.c	1.1 (edited for publication)
+        -:  268:
+        -:  269:	Special return values:
+        -:  270:		-1.0	entire table consisted of 0 entries
+        -:  271:		-2.0	invalid table entry (frequency less than 0)
+        -:  272:		-3.0	invalid table dimensions (r or c less than 2)
+        -:  273:		-4.0	unable to allocate enough working storage
+        -:  274:*/
+        -:  275:
+        -:  276:#include	<math.h>		/* for log() */
+        -:  277:#if __STDC__
+        -:  278:#include	<stdlib.h>		/* malloc, free */
+        -:  279:
+        -:  280:#include	"std.h"
+        -:  281:#else
+        -:  282:#include	"std.h"
+        -:  283:
+        -:  284:extern pointer	malloc();
+        -:  285:extern void	free();
+        -:  286:#endif
+        -:  287:
+        -:  288:#ifndef NULL
+        -:  289:#define NULL 0
+        -:  290:#endif
+        -:  291:
+        -:  292:#define	x(i,j)	f[(i)*c+(j)]		/* convenient way to access freqs */
+        -:  293:
+        -:  294:double
+function InfoTbl called 10 returned 100% blocks executed 93%
+       10:  295:InfoTbl( r, c, f, pdf )
+        -:  296:	int		r;		/* # rows in table */
+        -:  297:	int		c;		/* # columns in table */
+        -:  298:	const long	*f;		/* -> r*c frequency tallies */
+        -:  299:	int		*pdf;		/* -> return # d.f. for chi-square */
+        -:  300:	{
+        -:  301:	int	i;		/* row index */
+        -:  302:	int	j;		/* column index */
+        -:  303:	double		N;		/* (double)n */
+        -:  304:	double		info;		/* accumulates information measure */
+        -:  305:	double		*xi;		/* row sums */
+        -:  306:	double		*xj;		/* col sums */
+       10:  307:	int		rdf = r - 1;	/* row degrees of freedom */
+       10:  308:	int		cdf = c - 1;	/* column degrees of freedom */
+        -:  309:
+       10:  310:	if ( rdf <= 0 || cdf <= 0 )
+branch  0 taken 10 (fallthrough)
+branch  1 taken 0
+branch  2 taken 0 (fallthrough)
+branch  3 taken 10
+        -:  311:		{
+    #####:  312:		info = -3.0;
+    #####:  313:		goto ret3;
+        -:  314:		}
+        -:  315:
+       10:  316:	*pdf = rdf * cdf;		/* total degrees of freedom */
+        -:  317:
+       10:  318:	if ( (xi = (double *)malloc( r * sizeof(double) )) == NULL )
+branch  0 taken 0 (fallthrough)
+branch  1 taken 10
+        -:  319:		{
+    #####:  320:		info = -4.0;
+    #####:  321:		goto ret3;
+        -:  322:		}
+        -:  323:
+       10:  324:	if ( (xj = (double *)malloc( c * sizeof(double) )) == NULL )
+branch  0 taken 0 (fallthrough)
+branch  1 taken 10
+        -:  325:		{
+    #####:  326:		info = -4.0;
+    #####:  327:		goto ret2;
+        -:  328:		}
+        -:  329:
+        -:  330:	/* compute row sums and total */
+        -:  331:
+       10:  332:	N = 0.0;
+        -:  333:
+       41:  334:	for ( i = 0; i < r; ++i )
+branch  0 taken 32
+branch  1 taken 9 (fallthrough)
+        -:  335:		{
+       32:  336:		double	sum = 0.0;	/* accumulator */
+        -:  337:
+      148:  338:		for ( j = 0; j < c; ++j )
+branch  0 taken 117
+branch  1 taken 31 (fallthrough)
+        -:  339:			{
+      117:  340:			long	k = x(i,j);
+        -:  341:
+      117:  342:			if ( k < 0L )
+branch  0 taken 1 (fallthrough)
+branch  1 taken 116
+        -:  343:				{
+        1:  344:				info = -2.0;
+        1:  345:				goto ret1;
+        -:  346:				}
+        -:  347:
+      116:  348:			sum += (double)k;
+        -:  349:			}
+        -:  350:
+       31:  351:		N += xi[i] = sum;
+        -:  352:		}
+        -:  353:
+        9:  354:	if ( N <= 0.0 )
+branch  0 taken 1 (fallthrough)
+branch  1 taken 8
+        -:  355:		{
+        1:  356:		info = -1.0;
+        1:  357:		goto ret1;
+        -:  358:		}
+        -:  359:
+        -:  360:	/* compute column sums */
+        -:  361:
+       35:  362:	for ( j = 0; j < c; ++j )
+branch  0 taken 27
+branch  1 taken 8 (fallthrough)
+        -:  363:		{
+       27:  364:		double	sum = 0.0;	/* accumulator */
+        -:  365:
+      127:  366:		for ( i = 0; i < r; ++i )
+branch  0 taken 100
+branch  1 taken 27 (fallthrough)
+      100:  367:			sum += (double)x(i,j);
+        -:  368:
+       27:  369:		xj[j] = sum;
+        -:  370:		}
+        -:  371:
+        -:  372:	/* compute information measure (four parts) */
+        -:  373:
+        8:  374:	info = N * log( N );					/* part 1 */
+        -:  375:
+       35:  376:	for ( i = 0; i < r; ++i )
+branch  0 taken 27
+branch  1 taken 8 (fallthrough)
+        -:  377:		{
+       27:  378:		double	pi = xi[i];	/* row sum */
+        -:  379:
+       27:  380:		if ( pi > 0.0 )
+branch  0 taken 27 (fallthrough)
+branch  1 taken 0
+       27:  381:			info -= pi * log( pi );			/* part 2 */
+        -:  382:
+      127:  383:		for ( j = 0; j < c; ++j )
+branch  0 taken 100
+branch  1 taken 27 (fallthrough)
+        -:  384:			{
+      100:  385:			double	pij = (double)x(i,j);
+        -:  386:
+      100:  387:			if ( pij > 0.0 )
+branch  0 taken 100 (fallthrough)
+branch  1 taken 0
+      100:  388:				info += pij * log( pij );	/* part 3 */
+        -:  389:			}
+        -:  390:		}
+        -:  391:
+       35:  392:	for ( j = 0; j < c; ++j )
+branch  0 taken 27
+branch  1 taken 8 (fallthrough)
+        -:  393:		{
+       27:  394:		double	pj = xj[j];	/* column sum */
+        -:  395:
+       27:  396:		if ( pj > 0.0 )
+branch  0 taken 27 (fallthrough)
+branch  1 taken 0
+       27:  397:			info -= pj * log( pj );			/* part 4 */
+        -:  398:		}
+        -:  399:
+        8:  400:	info *= 2.0;			/* for comparability with chi-square */
+        -:  401:
+       10:  402:    ret1:
+       10:  403:	free( (pointer)xj );
+       10:  404:    ret2:
+       10:  405:	free( (pointer)xi );
+       10:  406:    ret3:
+       10:  407:	return info;
+        -:  408:	}
